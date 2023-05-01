@@ -4,6 +4,11 @@
 ## About the project
 Continuous Deploy is one of the standard practices followed by companies to promote code/software from lower environment to higher environment. This project will help you deploy your dashboards from your Development account to Production account without any manual intervention as soon as one commits the dashboard to the source repository.
 
+This repo follows the below architecture to port dashboards:
+
+<img width="803" alt="image" src="https://user-images.githubusercontent.com/30472234/235430476-e0cd1220-9b73-4a50-8577-f945dfd8dafc.png">
+
+
 Please deploy the below stack in your environment and follow the steps mentioned in `Trigger the pipeline` section.
 
 ## Deployment steps
