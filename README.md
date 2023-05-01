@@ -7,6 +7,13 @@ Continuous Deploy is one of the standard practices followed by companies to prom
 Please deploy the below stack in your environment and follow the steps mentioned in `Trigger the pipeline` section.
 
 ## Deployment steps
+
+First clone this repo in your local and switch to the directory:
+
+```
+git clone https://github.com/sagarlakshmipathy/quicksight-continuous-deploy.git && cd quicksight-continuous-deploy
+```
+
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 This project is set up like a standard Python project.  The initialization
