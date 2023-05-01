@@ -1,0 +1,52 @@
+version: 0.2
+
+env:
+  parameter-store:
+    TAREGT_ACCOUNT_ID: /quicksight-continuous-deploy/target-account-id
+    TARGET_REGION: /quicksight-continuous-deploy/target-account-region
+    TARGET_ACCOUNT_DEPLOY_ROLE_ARN: /quicksight-continuous-deploy/target-account-deploy-role-arn
+    PROFILE_NAME: /quicksight-continuous-deploy/profile-name
+    DASHBOARD_ID: /quicksight-continuous-deploy/dashboard-id
+    DASHBOARD_NAME: /quicksight-continuous-deploy/dashboard-name
+    USER_NAME: /quicksight-continuous-deploy/user-name
+    NAMESPACE: /quicksight-continuous-deploy/namespace
+
+phases:
+  pre_build:
+    commands:
+      echo "Assume role in production account"
+      sts = $(aws sts assume-role --role-arn $TARGET_ACCOUNT_DEPLOY_ROLE_ARN --role-session-name $PROFILE_NAME --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' --output json)
+      echo "Converting sts to array"
+      sts=($sts)
+      echo "Setting secret keys"
+      aws configure set aws_access_key_id ${sts[0]} --profile $PROFILE_NAME
+      aws configure set aws_secret_access_key ${sts[1]} --profile $PROFILE_NAME
+      aws configure set aws_session_token ${sts[2]} --profile $PROFILE_NAME
+      echo "Setting region"
+      aws configure set region $TARGET_REGION --profile $PROFILE_NAME
+
+  build:
+    commands:
+      echo "Deploying the QuickSight dashboard in production account"
+      aws quicksight create-dashboard --aws-account-id $TARGET_ACCOUNT_ID --dashboard-id $DASHBOARD_ID --dashboard-name $DASHBOARD_NAME --source-entity file://$DASHBOARD_ID.json --region $TARGET_REGION --profile $PROFILE_NAME
+
+  post_build:
+    commands:
+      echo "sleep for 10 seconds to wait for the dashboard to be created"
+      sleep 10
+
+      echo "Describe dashboard to check if the deployment is successful"
+      aws quicksight describe-dashboard --aws-account-id $TARGET_ACCOUNT_ID --dashboard-id $DASHBOARD_ID --region $TARGET_REGION --profile $PROFILE_NAME
+
+      echo "Check the exit code of the previous command (0 indicates success)"
+      if [ $? -ne 0 ]; then
+        echo "Describe dashboard failed, failing build"
+        exit 1
+      else
+        if [ -n "$USER_NAME" ]; then
+          echo "Updating dashboard permissions"
+          aws quicksight update-dashboard-permissions --aws-account-id $TARGET_ACCOUNT_ID --dashboard-id $DASHBOARD_ID --grant-permissions Principal=arn:aws:quicksight:us-east-1:$NAMESPACE:$USER_NAME Actions=quicksight:DescribeDashboard,quicksight:ListDashboardVersions,quicksight:UpdateDashboardPermissions,quicksight:QueryDashboard,quicksight:UpdateDashboard,quicksight:DeleteDashboard,quicksight:DescribeDashboardPermissions,quicksight:UpdateDashboardPublishedVersion,quicksight:DescribeDashboardVersions,quicksight:CreateDashboardPermission --region $TARGET_REGION --profile $PROFILE_NAME
+        else
+          echo "USER_NAME is empty, skipping update-dashboard-permissions"
+        fi
+      fi
